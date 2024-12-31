@@ -1,3 +1,3 @@
-# spring-boot-hello
+# retro-launcher-controller
 
-Simple, it says hi to your IP.
+Spring boot app that manages control over a remote service (python on pi) to launch retro demos and emulators.

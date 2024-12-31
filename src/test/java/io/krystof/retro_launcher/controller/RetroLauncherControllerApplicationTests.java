@@ -1,10 +1,10 @@
-package io.krystof.spring_boot_hello;
+package io.krystof.retro_launcher.controller;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class SpringBootHelloApplicationTests {
+class RetroLauncherControllerApplicationTests {
 
 	@Test
 	void contextLoads() {

@@ -1,13 +1,13 @@
-package io.krystof.spring_boot_hello;
+package io.krystof.retro_launcher.controller;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class SpringBootHelloApplication {
+public class RetroLauncherControllerApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(SpringBootHelloApplication.class, args);
+		SpringApplication.run(RetroLauncherControllerApplication.class, args);
 	}
 
 }

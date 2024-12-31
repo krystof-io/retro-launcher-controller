@@ -173,3 +173,5 @@ fabric.properties
 
 /.idea/*
 /target*
+/bundle-output.txt
+/retro-launcher-controller-bundle-output.txt
