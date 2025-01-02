@@ -5,6 +5,7 @@ import io.krystof.retro_launcher.controller.FrontendWebSocketHandler;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.client.WebSocketClient;
@@ -20,6 +21,9 @@ public class FrontEndWebSocketConfig implements WebSocketConfigurer {
 
     private FrontendWebSocketHandler wsHandler;
 
+    @Value("${frontend.allowed.origins}")
+    private String allowedOrigin;
+
     public FrontEndWebSocketConfig(FrontendWebSocketHandler wsHandler) {
         this.wsHandler = wsHandler;
     }
@@ -28,7 +32,7 @@ public class FrontEndWebSocketConfig implements WebSocketConfigurer {
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         logger.info("Registering WebSocket handler for /ws/status");
         registry.addHandler(wsHandler, "/ws/status")
-                .setAllowedOrigins("http://localhost:5173");
+                .setAllowedOrigins(allowedOrigin);
     }
 
 }
