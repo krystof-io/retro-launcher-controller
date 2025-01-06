@@ -1,3 +1,26 @@
 ###
 GET http://localhost:8080/api/status
 
+###
+GET http://localhost:8080/api/program/2
+
+###
+GET http://localhost:8080/api/programs/search?
+    page=0&
+    size=5&
+    sortField=id&
+    sortDirection=ASC
+
+###
+GET http://localhost:8080/api/programs/search?
+    titleSearch={{$random.alphanumeric(8)}}&
+    platformId={{$random.integer(100)}}&
+    curationStatus={{$random.alphanumeric(8)}}&
+    contentRating={{$random.alphanumeric(8)}}&
+    authorId={{$random.integer(100)}}&
+    yearFrom={{$random.integer(100)}}&
+    yearTo={{$random.integer(100)}}&
+    page={{$random.integer(100)}}&
+    size={{$random.integer(100)}}&
+    sortField=title&
+    sortDirection=ASC

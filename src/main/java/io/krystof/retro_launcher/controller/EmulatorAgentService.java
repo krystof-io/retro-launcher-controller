@@ -1,7 +1,9 @@
 package io.krystof.retro_launcher.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.krystof.retro_launcher.model.EmulatorStatus;
+import io.krystof.retro_launcher.model.*;
 import jakarta.annotation.PostConstruct;
 import jakarta.websocket.Session;
 import org.slf4j.Logger;
@@ -13,6 +15,7 @@ import org.springframework.web.socket.client.WebSocketClient;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -102,10 +105,49 @@ public class EmulatorAgentService implements WebSocketHandler {
     public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) throws IOException {
         logger.info("Inbound message from agent. Payload: {}", message.getPayload());
         if (message instanceof TextMessage textMessage) {
-            EmulatorStatus status = objectMapper.readValue(textMessage.getPayload(), EmulatorStatus.class);
-            currentStatus = status;
-            mediator.updateStatus(status);
+            try {
+                JsonNode messageNode = objectMapper.readTree(textMessage.getPayload());
+                AgentMessageType messageType = AgentMessageType.valueOf(messageNode.get("type").asText());
+
+                switch (messageType) {
+                    case STATUS_UPDATE:
+                        EmulatorStatus status = objectMapper.treeToValue(
+                                messageNode.get("payload"),
+                                EmulatorStatus.class
+                        );
+                        currentStatus = status;
+                        mediator.updateStatus(status);
+                        break;
+
+                    case ERROR:
+                        JsonNode payload = messageNode.get("payload");
+                        EmulatorError error = new EmulatorError(
+                                payload.get("code").asText(),
+                                payload.get("message").asText(),
+                                objectMapper.convertValue(payload.get("details"), Map.class)
+                        );
+                        handleError(error);
+                        break;
+
+
+                    default:
+                        logger.warn("Unknown message type: {}", messageType);
+                }
+            } catch (JsonProcessingException e) {
+                logger.error("Error parsing message: {}", e.getMessage());
+                handleError(new EmulatorError(
+                        "MESSAGE_PARSE_ERROR",
+                        "Failed to parse message from agent",
+                        Map.of("error", e.getMessage())
+                ));
+            }
         }
+    }
+
+    private void handleError(EmulatorError error) {
+        logger.error("Emulator error: {} - {}", error.getCode(), error.getMessage());
+        // Notify the mediator about the error
+        mediator.notifyError(error);
     }
 
     @Override
