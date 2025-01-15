@@ -1,10 +1,7 @@
 package io.krystof.retro_launcher.controller;
 
 import io.krystof.retro_launcher.model.EmulatorStatus;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api")
@@ -21,5 +18,6 @@ public class EmulatorController {
     public EmulatorStatus getStatus() {
         return agentService.getCurrentStatus();
     }
+
 
 }

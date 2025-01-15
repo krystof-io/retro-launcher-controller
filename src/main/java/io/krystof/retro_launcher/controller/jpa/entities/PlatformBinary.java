@@ -33,7 +33,7 @@ public class PlatformBinary {
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
-    @OneToMany(mappedBy = "platformBinary")
+    @OneToMany(mappedBy = "platformBinary",cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("argumentOrder ASC")
     private Set<PlatformBinaryLaunchArgument> launchArguments;
 

@@ -9,7 +9,11 @@ import jakarta.websocket.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.client.WebSocketClient;
 
@@ -25,8 +29,10 @@ public class EmulatorAgentService implements WebSocketHandler {
 
     private final WebSocketClient wsClient;
     private final String agentWsUrl;
+    private final String agentRestUrl;
     private final ObjectMapper objectMapper;
     private final EmulatorAgentWebSocketMediator mediator;
+    private final RestTemplate restTemplate;
 
     EmulatorStatus currentStatus;
 
@@ -43,11 +49,14 @@ public class EmulatorAgentService implements WebSocketHandler {
             WebSocketClient wsClient,
             ObjectMapper objectMapper,
             EmulatorAgentWebSocketMediator mediator,
-            @Value("${agent.api.url}") String agentBaseUrl) {
+            @Value("${agent.api.url}") String agentBaseUrl,
+            RestTemplate restTemplate) {
         this.wsClient = wsClient;
         this.objectMapper = objectMapper;
         this.mediator = mediator;
         this.agentWsUrl = agentBaseUrl.replace("http", "ws") + "/ws";
+        this.agentRestUrl = agentBaseUrl;
+        this.restTemplate = restTemplate;
     }
 
     @PostConstruct
@@ -182,5 +191,29 @@ public class EmulatorAgentService implements WebSocketHandler {
 
     public EmulatorStatus getCurrentStatus() {
         return currentStatus;
+    }
+
+    public ResponseEntity<Map<String, Object>> postToAgent(String path, Object body) {
+        String url = agentRestUrl + path;
+        logger.info("Making POST request to agent: {} with body: {}", url, body);
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<?> requestEntity = new HttpEntity<>(body, headers);
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    requestEntity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            logger.info("Received response from agent: {}", response.getBody());
+            return response;
+        } catch (RestClientException e) {
+            logger.error("Error making request to agent: ", e);
+            throw new RuntimeException("Failed to communicate with agent service", e);
+        }
     }
 }

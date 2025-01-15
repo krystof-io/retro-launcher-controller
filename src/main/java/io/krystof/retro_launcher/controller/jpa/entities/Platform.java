@@ -23,7 +23,7 @@ public class Platform {
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
-    @OneToMany(mappedBy = "platform")
+    @OneToMany(mappedBy = "platform",cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PlatformBinary> binaries;
 
     @PrePersist

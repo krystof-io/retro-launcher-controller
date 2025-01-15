@@ -54,4 +54,13 @@ public class ProgramLaunchArgumentDTO {
         result = 31 * result + Objects.hashCode(description);
         return result;
     }
+
+    public String toStringForRoughCompare() {
+        return "ProgramLaunchArgument{" +
+                ", argumentOrder=" + argumentOrder +
+                ", argumentValue='" + argumentValue + '\'' +
+                ", argumentGroup='" + argumentGroup + '\'' +
+                ", description='" + description + '\'' +
+                '}';
+    }
 }

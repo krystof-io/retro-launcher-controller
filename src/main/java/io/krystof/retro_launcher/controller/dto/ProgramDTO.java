@@ -24,6 +24,7 @@ public class ProgramDTO {
     private PlatformBinaryDTO platformBinary;
     private List<ProgramDiskImageDTO> diskImages;
     private List<ProgramLaunchArgumentDTO> launchArguments;
+    private List<PlaybackTimelineEventDTO> playbackTimelineEvents;
 
     public PlatformBinaryDTO getPlatformBinary() {
         return platformBinary;
@@ -75,33 +76,12 @@ public class ProgramDTO {
     public List<ProgramLaunchArgumentDTO> getLaunchArguments() { return launchArguments; }
     public void setLaunchArguments(List<ProgramLaunchArgumentDTO> launchArguments) { this.launchArguments = launchArguments; }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        ProgramDTO that = (ProgramDTO) o;
-        return Objects.equals(id, that.id) && Objects.equals(title, that.title) && type == that.type && Objects.equals(releaseYear, that.releaseYear) && Objects.equals(description, that.description) && contentRating == that.contentRating && curationStatus == that.curationStatus && Objects.equals(curatorNotes, that.curatorNotes) && Objects.equals(lastRunAt, that.lastRunAt) && Objects.equals(runCount, that.runCount) && Objects.equals(authors, that.authors) && Objects.equals(platform, that.platform) && Objects.equals(platformBinary, that.platformBinary) && Objects.equals(diskImages, that.diskImages) && Objects.equals(launchArguments, that.launchArguments);
+    public List<PlaybackTimelineEventDTO> getPlaybackTimelineEvents() {
+        return playbackTimelineEvents;
     }
 
-    @Override
-    public int hashCode() {
-        int result = Objects.hashCode(id);
-        result = 31 * result + Objects.hashCode(title);
-        result = 31 * result + Objects.hashCode(type);
-        result = 31 * result + Objects.hashCode(releaseYear);
-        result = 31 * result + Objects.hashCode(description);
-        result = 31 * result + Objects.hashCode(contentRating);
-        result = 31 * result + Objects.hashCode(curationStatus);
-        result = 31 * result + Objects.hashCode(curatorNotes);
-        result = 31 * result + Objects.hashCode(lastRunAt);
-        result = 31 * result + Objects.hashCode(runCount);
-        result = 31 * result + Objects.hashCode(authors);
-        result = 31 * result + Objects.hashCode(platform);
-        result = 31 * result + Objects.hashCode(platformBinary);
-        result = 31 * result + Objects.hashCode(diskImages);
-        result = 31 * result + Objects.hashCode(launchArguments);
-        return result;
+    public void setPlaybackTimelineEvents(List<PlaybackTimelineEventDTO> playbackTimelineEvents) {
+        this.playbackTimelineEvents = playbackTimelineEvents;
     }
 
     @Override
@@ -122,7 +102,38 @@ public class ProgramDTO {
                 ", platformBinary=" + platformBinary +
                 ", diskImages=" + diskImages +
                 ", launchArguments=" + launchArguments +
+                ", playbackTimelineEvents=" + playbackTimelineEvents +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ProgramDTO that = (ProgramDTO) o;
+        return Objects.equals(id, that.id) && Objects.equals(title, that.title) && type == that.type && Objects.equals(releaseYear, that.releaseYear) && Objects.equals(description, that.description) && contentRating == that.contentRating && curationStatus == that.curationStatus && Objects.equals(curatorNotes, that.curatorNotes) && Objects.equals(lastRunAt, that.lastRunAt) && Objects.equals(runCount, that.runCount) && Objects.equals(authors, that.authors) && Objects.equals(platform, that.platform) && Objects.equals(platformBinary, that.platformBinary) && Objects.equals(diskImages, that.diskImages) && Objects.equals(launchArguments, that.launchArguments) && Objects.equals(playbackTimelineEvents, that.playbackTimelineEvents);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hashCode(id);
+        result = 31 * result + Objects.hashCode(title);
+        result = 31 * result + Objects.hashCode(type);
+        result = 31 * result + Objects.hashCode(releaseYear);
+        result = 31 * result + Objects.hashCode(description);
+        result = 31 * result + Objects.hashCode(contentRating);
+        result = 31 * result + Objects.hashCode(curationStatus);
+        result = 31 * result + Objects.hashCode(curatorNotes);
+        result = 31 * result + Objects.hashCode(lastRunAt);
+        result = 31 * result + Objects.hashCode(runCount);
+        result = 31 * result + Objects.hashCode(authors);
+        result = 31 * result + Objects.hashCode(platform);
+        result = 31 * result + Objects.hashCode(platformBinary);
+        result = 31 * result + Objects.hashCode(diskImages);
+        result = 31 * result + Objects.hashCode(launchArguments);
+        result = 31 * result + Objects.hashCode(playbackTimelineEvents);
+        return result;
     }
 
 }

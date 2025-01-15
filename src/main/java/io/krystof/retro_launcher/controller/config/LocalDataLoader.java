@@ -184,11 +184,11 @@ public class LocalDataLoader implements CommandLineRunner {
             ProgramDiskImage diskImage = new ProgramDiskImage();
             diskImage.setProgram(program);
             diskImage.setDiskNumber(diskNumber);
-            diskImage.setFilePath(filePath);
+            diskImage.setImageName(filePath);
             diskImage.setFileHash(fileHash);
             diskImage.setFileSize(fileSize);
-            diskImage.setDisplayName(displayName);
-            diskImage.setStoragePath("c64/demos/" + fileHash + "/disk1.d64");
+            //diskImage.setDisplayName(displayName);
+//            diskImage.setStoragePath("c64/demos/" + fileHash + "/disk1.d64");
             return diskImageRepo.save(diskImage);
         });
     }
@@ -242,7 +242,7 @@ public class LocalDataLoader implements CommandLineRunner {
                     .forEach(disk -> {
                         logger.info(String.format("   Disk[%d]: %s (Hash: %s)",
                                 disk.getDiskNumber(),
-                                disk.getFilePath(),
+                                disk.getImageName(),
                                 disk.getFileHash()
                         ));
                     });

@@ -33,6 +33,7 @@ public class ProgramSearchController {
     public Page<ProgramDTO> searchPrograms(
             @RequestParam(required = false) String titleSearch,
             @RequestParam(required = false) Long platformId,
+            @RequestParam(required = false) Long platformBinaryId,
             @RequestParam(required = false) String curationStatus,
             @RequestParam(required = false) String contentRating,
             @RequestParam(required = false) Long authorId,
@@ -67,6 +68,10 @@ public class ProgramSearchController {
                 ContentRating rating = ContentRating.valueOf(contentRating);
                 spec = spec.and(ProgramSpecifications.withContentRating(rating));
             } catch (IllegalArgumentException ignored) {}
+        }
+
+        if (platformBinaryId != null) {
+            spec = spec.and(ProgramSpecifications.withPlatformBinaryId(platformBinaryId));
         }
 
         if (authorId != null) {

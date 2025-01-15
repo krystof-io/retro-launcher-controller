@@ -62,16 +62,27 @@ CREATE TABLE program (
                          CONSTRAINT check_curation_status CHECK (curation_status IN ('UNCURATED', 'WORKING', 'BROKEN'))
 );
 
+
+CREATE TABLE playback_timeline_event (
+                                  id BIGSERIAL PRIMARY KEY,
+                                  program_id BIGINT NOT NULL REFERENCES program(id),
+                                  event_type VARCHAR(50) NOT NULL,
+                                  sequence_number INTEGER NOT NULL,
+                                  time_offset_seconds INTEGER NOT NULL,  -- Delay before executing this command
+                                  event_data JSONB,  -- For command-specific data (e.g., keys to press)
+                                  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                                  CONSTRAINT unique_program_order UNIQUE(program_id, sequence_number),
+                                  CONSTRAINT check_command_type CHECK (event_type IN ('MOUNT_NEXT_DISK', 'PRESS_KEYS', 'END_PLAYBACK'))
+);
+
 CREATE TABLE program_disk_image (
                                     id BIGSERIAL PRIMARY KEY,
                                     program_id BIGINT NOT NULL REFERENCES program(id),
                                     disk_number INTEGER NOT NULL,
-                                    file_path VARCHAR(1024) NOT NULL,
+                                    image_name VARCHAR(1024) NOT NULL,
                                     file_hash VARCHAR(64) NOT NULL UNIQUE,
                                     file_size BIGINT NOT NULL,
-                                    display_name VARCHAR(255),
-                                    description TEXT,
-                                    storage_path VARCHAR(1024),
                                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                                     UNIQUE(program_id, disk_number)

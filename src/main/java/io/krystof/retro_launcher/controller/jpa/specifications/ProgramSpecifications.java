@@ -37,6 +37,15 @@ public class ProgramSpecifications {
         };
     }
 
+    public static Specification<Program> withPlatformBinaryId(Long platformBinaryId) {
+        return (root, query, cb) -> {
+            if (platformBinaryId == null) {
+                return null;
+            }
+            return cb.equal(root.get("platformBinary").get("id"), platformBinaryId);
+        };
+    }
+
     public static Specification<Program> byAuthorId(Long authorId) {
         return (root, query, cb) -> {
             if (authorId == null) {

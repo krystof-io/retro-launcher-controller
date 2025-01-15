@@ -1,5 +1,6 @@
 package io.krystof.retro_launcher.controller.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.krystof.retro_launcher.controller.jpa.entities.PlatformBinary;
 import jakarta.persistence.*;
 
@@ -11,6 +12,7 @@ public class PlatformBinaryLaunchArgumentDTO {
     private Long id;
     private Integer argumentOrder;
     private String argumentTemplate;
+    @JsonProperty("isRequired")
     private boolean isRequired = true;
     private boolean fileArgument = false;
     private String description;

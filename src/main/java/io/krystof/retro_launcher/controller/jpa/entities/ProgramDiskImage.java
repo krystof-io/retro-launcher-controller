@@ -1,5 +1,6 @@
 package io.krystof.retro_launcher.controller.jpa.entities;
 
+import io.krystof.retro_launcher.controller.resolvers.StoragePathResolver;
 import jakarta.persistence.*;
 
 import java.time.OffsetDateTime;
@@ -12,14 +13,14 @@ public class ProgramDiskImage {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "program_id", nullable = false)
+    @JoinColumn( name = "program_id", nullable = false)
     private Program program;
 
     @Column(name = "disk_number", nullable = false)
     private Integer diskNumber;
 
-    @Column(name = "file_path", nullable = false)
-    private String filePath;
+    @Column(name = "image_name", nullable = false)
+    private String imageName;
 
     @Column(name = "file_hash", nullable = false, unique = true)
     private String fileHash;
@@ -27,13 +28,11 @@ public class ProgramDiskImage {
     @Column(name = "file_size", nullable = false)
     private Long fileSize;
 
-    @Column(name = "display_name")
-    private String displayName;
 
-    private String description;
-
-    @Column(name = "storage_path")
-    private String storagePath;
+    @Transient
+    public String getStoragePath() {
+        return StoragePathResolver.resolveStoragePath(this);
+    }
 
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
@@ -76,12 +75,12 @@ public class ProgramDiskImage {
         this.diskNumber = diskNumber;
     }
 
-    public String getFilePath() {
-        return filePath;
+    public String getImageName() {
+        return imageName;
     }
 
-    public void setFilePath(String filePath) {
-        this.filePath = filePath;
+    public void setImageName(String filePath) {
+        this.imageName = filePath;
     }
 
     public String getFileHash() {
@@ -98,30 +97,6 @@ public class ProgramDiskImage {
 
     public void setFileSize(Long fileSize) {
         this.fileSize = fileSize;
-    }
-
-    public String getDisplayName() {
-        return displayName;
-    }
-
-    public void setDisplayName(String displayName) {
-        this.displayName = displayName;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getStoragePath() {
-        return storagePath;
-    }
-
-    public void setStoragePath(String storagePath) {
-        this.storagePath = storagePath;
     }
 
     public OffsetDateTime getCreatedAt() {

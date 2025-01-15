@@ -2,7 +2,7 @@
 GET http://localhost:8080/api/status
 
 ###
-GET http://localhost:8080/api/program/2
+GET http://localhost:8080/api/program/1
 
 ###
 GET http://localhost:8080/api/programs/search?
@@ -24,3 +24,9 @@ GET http://localhost:8080/api/programs/search?
     size={{$random.integer(100)}}&
     sortField=title&
     sortDirection=ASC
+
+###
+POST http://localhost:8080/api/launch/1
+
+###
+GET http://localhost:8080/api/platforms

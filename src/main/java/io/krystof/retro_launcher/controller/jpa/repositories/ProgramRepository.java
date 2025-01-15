@@ -21,17 +21,6 @@ public interface ProgramRepository extends JpaRepository<Program, Long> , JpaSpe
             "WHERE a.id = :authorId")
     List<Program> findByAuthorId(@Param("authorId") Long authorId);
 
-    @Query("SELECT DISTINCT p FROM Program p " +
-            "LEFT JOIN FETCH p.platform " +
-            "LEFT JOIN FETCH p.platformBinary pb " +
-            "LEFT JOIN FETCH p.authors " +
-            "LEFT JOIN FETCH p.diskImages di " +
-            "LEFT JOIN FETCH p.launchArguments la " +
-            "LEFT JOIN FETCH pb.launchArguments pbla " +
-            "WHERE p.id = :id " +
-            "ORDER BY di.diskNumber, la.argumentOrder, pbla.argumentOrder")
-    Optional<Program> findByIdWithDetails(Long id);
-
     @Query("SELECT p FROM Program p " +
             "LEFT JOIN FETCH p.platform " +
             "WHERE p.curationStatus = :status " +

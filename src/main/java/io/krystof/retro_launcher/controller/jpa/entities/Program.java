@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 
 import java.time.OffsetDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -63,7 +64,11 @@ public class Program {
 
     @OneToMany(mappedBy = "program", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("argumentOrder ASC")
-    private Set<ProgramLaunchArgument> launchArguments;
+    private List<ProgramLaunchArgument> launchArguments;
+
+    @OneToMany(mappedBy = "program", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sequenceNumber ASC")
+    private List<PlaybackTimelineEvent> playbackTimelineEvents;
 
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
@@ -71,9 +76,9 @@ public class Program {
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
-    @OneToMany(mappedBy = "program")
+    @OneToMany(mappedBy = "program",cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("diskNumber ASC")
-    private Set<ProgramDiskImage> diskImages;
+    private List<ProgramDiskImage> diskImages;
 
     @PrePersist
     protected void onCreate() {
@@ -166,6 +171,13 @@ public class Program {
         this.curatorNotes = curatorNotes;
     }
 
+    public List<PlaybackTimelineEvent> getPlaybackTimelineEvents() {
+        return playbackTimelineEvents;
+    }
+
+    public void setPlaybackTimelineEvents(List<PlaybackTimelineEvent> playbackTimelineEvents) {
+        this.playbackTimelineEvents = playbackTimelineEvents;
+    }
     public OffsetDateTime getLastRunAt() {
         return lastRunAt;
     }
@@ -190,11 +202,11 @@ public class Program {
         this.platformBinary = platformBinary;
     }
 
-    public Set<ProgramLaunchArgument> getLaunchArguments() {
+    public List<ProgramLaunchArgument> getLaunchArguments() {
         return launchArguments;
     }
 
-    public void setLaunchArguments(Set<ProgramLaunchArgument> launchArguments) {
+    public void setLaunchArguments(List<ProgramLaunchArgument> launchArguments) {
         this.launchArguments = launchArguments;
     }
 
@@ -214,11 +226,11 @@ public class Program {
         this.updatedAt = updatedAt;
     }
 
-    public Set<ProgramDiskImage> getDiskImages() {
+    public List<ProgramDiskImage> getDiskImages() {
         return diskImages;
     }
 
-    public void setDiskImages(Set<ProgramDiskImage> diskImages) {
+    public void setDiskImages(List<ProgramDiskImage> diskImages) {
         this.diskImages = diskImages;
     }
 }

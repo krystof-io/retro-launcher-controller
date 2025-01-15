@@ -106,4 +106,14 @@ public class ProgramLaunchArgument {
     public void setUpdatedAt(OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
+
+
+    public String toStringForRoughCompare() {
+        return "ProgramLaunchArgument{" +
+                ", argumentOrder=" + argumentOrder +
+                ", argumentValue='" + argumentValue + '\'' +
+                ", argumentGroup='" + argumentGroup + '\'' +
+                ", description='" + description + '\'' +
+                '}';
+    }
 }

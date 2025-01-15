@@ -7,6 +7,7 @@ import io.krystof.retro_launcher.controller.jpa.entities.ProgramLaunchArgument;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -22,4 +23,17 @@ public interface PlatformBinaryLaunchArgumentMapper {
 
     List<PlatformBinaryLaunchArgumentDTO> toDtoList(List<PlatformBinaryLaunchArgument> entities);
     Set<PlatformBinaryLaunchArgumentDTO> toDtoSet(Set<PlatformBinaryLaunchArgument> entities);
+
+    // Convert List<DTO> to Set<Entity>
+    default Set<PlatformBinaryLaunchArgument> toEntitySet(List<PlatformBinaryLaunchArgumentDTO> dtos) {
+        if (dtos == null) {
+            return null;
+        }
+
+        Set<PlatformBinaryLaunchArgument> set = new HashSet<>();
+        for (PlatformBinaryLaunchArgumentDTO dto : dtos) {
+            set.add(toEntity(dto));
+        }
+        return set;
+    }
 }

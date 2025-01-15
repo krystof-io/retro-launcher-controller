@@ -1,5 +1,7 @@
 package io.krystof.retro_launcher.controller.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -8,6 +10,7 @@ public class PlatformBinaryDTO {
     private String name;
     private String variant;
     private String description;
+    @JsonProperty("isDefault")
     private boolean isDefault;
     private List<PlatformBinaryLaunchArgumentDTO> launchArguments;
     // Getters and setters

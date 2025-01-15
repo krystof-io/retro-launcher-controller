@@ -17,7 +17,8 @@ import java.util.Set;
         ProgramDiskImageMapper.class,
         ProgramLaunchArgumentMapper.class,
         PlatformBinaryMapper.class,
-        PlatformBinaryLaunchArgumentMapper.class
+        PlatformBinaryLaunchArgumentMapper.class,
+        PlaybackTimelineEventMapper.class
 })
 public interface ProgramMapper {
     @Mapping(target = "authors", source = "authors")
@@ -25,6 +26,7 @@ public interface ProgramMapper {
     @Mapping(target = "diskImages", source = "diskImages")
     @Mapping(target = "launchArguments", source = "launchArguments")
     @Mapping(target = "platformBinary", source = "platformBinary")
+    @Mapping(target="playbackTimelineEvents", source="playbackTimelineEvents")
     ProgramDTO toDto(Program entity);
 
     @Mapping(target = "createdAt", ignore = true)
