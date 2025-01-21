@@ -58,6 +58,15 @@ public class Program {
     @Column(name = "run_count")
     private Integer runCount = 0;
 
+    @Column(name = "source_url")
+    private String sourceUrl;
+
+    @Column(name = "source_rating")
+    private Double sourceRating;
+
+    @Column(name = "source_id")
+    private String sourceId;
+
     @ManyToOne
     @JoinColumn(name = "platform_binary_id")
     private PlatformBinary platformBinary;
@@ -105,6 +114,30 @@ public class Program {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public String getSourceId() {
+        return sourceId;
+    }
+
+    public void setSourceId(String sourceId) {
+        this.sourceId = sourceId;
+    }
+
+    public String getSourceUrl() {
+        return sourceUrl;
+    }
+
+    public void setSourceUrl(String sourceUrl) {
+        this.sourceUrl = sourceUrl;
+    }
+
+    public Double getSourceRating() {
+        return sourceRating;
+    }
+
+    public void setSourceRating(Double sourceRating) {
+        this.sourceRating = sourceRating;
     }
 
     public Platform getPlatform() {

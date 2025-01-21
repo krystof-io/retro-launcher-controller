@@ -39,6 +39,7 @@ public class ProgramSearchController {
             @RequestParam(required = false) Long authorId,
             @RequestParam(required = false) Integer yearFrom,
             @RequestParam(required = false) Integer yearTo,
+            @RequestParam(required = false) String sourceId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "title") String sortField,
@@ -61,6 +62,10 @@ public class ProgramSearchController {
                 CurationStatus status = CurationStatus.valueOf(curationStatus);
                 spec = spec.and(ProgramSpecifications.withCurationStatus(status));
             } catch (IllegalArgumentException ignored) {}
+        }
+
+        if (sourceId != null && !sourceId.trim().isEmpty()) {
+            spec = spec.and(ProgramSpecifications.withSourceId(sourceId.trim()));
         }
 
         if (contentRating != null && !contentRating.isEmpty()) {

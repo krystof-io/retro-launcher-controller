@@ -54,6 +54,9 @@ CREATE TABLE program (
                          curator_notes TEXT,
                          last_run_at TIMESTAMP WITH TIME ZONE,
                          run_count INTEGER DEFAULT 0,
+                         source_url VARCHAR(1024),
+                         source_rating double precision,
+                         source_id VARCHAR(36),
                          platform_binary_id BIGINT REFERENCES platform_binary(id),
                          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -81,7 +84,7 @@ CREATE TABLE program_disk_image (
                                     program_id BIGINT NOT NULL REFERENCES program(id),
                                     disk_number INTEGER NOT NULL,
                                     image_name VARCHAR(1024) NOT NULL,
-                                    file_hash VARCHAR(64) NOT NULL UNIQUE,
+                                    file_hash VARCHAR(64) NOT NULL,
                                     file_size BIGINT NOT NULL,
                                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -109,43 +112,43 @@ CREATE TABLE program_launch_argument (
                                          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                                          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-
--- Initial data
-INSERT INTO platform (name, description) VALUES
-    ('C64', 'Commodore 64 computer platform');
-
--- Insert default binary
-INSERT INTO platform_binary (platform_id, name, description, is_default) VALUES
-    ((SELECT id FROM platform WHERE name = 'C64'), 'x64sc', 'Accurate C64 emulation - better for demos', TRUE);
-
--- Add default argument templates for x64sc
-INSERT INTO platform_binary_launch_argument (
-    platform_binary_id,
-    argument_order,
-    argument_template,
-    is_required,
-    file_argument,
-    description
-) VALUES (
-             (SELECT id FROM platform_binary WHERE name = 'x64sc'),
-             1,
-             '-silent',
-             true,
-             false,
-             'Run without sound'
-         ), (
-             (SELECT id FROM platform_binary WHERE name = 'x64sc'),
-             2,
-             '-fullscreen',
-             true,
-             false,
-             'Run in fullscreen mode'
-         ), (
-             (SELECT id FROM platform_binary WHERE name = 'x64sc'),
-             999,
-             '-autostart',
-             true,
-             true,
-             'Autostart the program file'
-         );
-
+--
+-- -- Initial data
+-- INSERT INTO platform (name, description) VALUES
+--     ('C64', 'Commodore 64 computer platform');
+--
+-- -- Insert default binary
+-- INSERT INTO platform_binary (platform_id, name, description, is_default) VALUES
+--     ((SELECT id FROM platform WHERE name = 'C64'), 'x64sc', 'Accurate C64 emulation - better for demos', TRUE);
+--
+-- -- Add default argument templates for x64sc
+-- INSERT INTO platform_binary_launch_argument (
+--     platform_binary_id,
+--     argument_order,
+--     argument_template,
+--     is_required,
+--     file_argument,
+--     description
+-- ) VALUES (
+--              (SELECT id FROM platform_binary WHERE name = 'x64sc'),
+--              1,
+--              '-silent',
+--              true,
+--              false,
+--              'Run without sound'
+--          ), (
+--              (SELECT id FROM platform_binary WHERE name = 'x64sc'),
+--              2,
+--              '-fullscreen',
+--              true,
+--              false,
+--              'Run in fullscreen mode'
+--          ), (
+--              (SELECT id FROM platform_binary WHERE name = 'x64sc'),
+--              999,
+--              '-autostart',
+--              true,
+--              true,
+--              'Autostart the program file'
+--          );
+--

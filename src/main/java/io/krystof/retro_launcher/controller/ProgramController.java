@@ -7,10 +7,10 @@ import io.krystof.retro_launcher.controller.dto.ProgramDiskImageDTO;
 import io.krystof.retro_launcher.controller.dto.ProgramLaunchArgumentDTO;
 import io.krystof.retro_launcher.controller.jpa.entities.*;
 import io.krystof.retro_launcher.controller.jpa.images.DiskImageStorageDAO;
-import io.krystof.retro_launcher.controller.jpa.repositories.AuthorRepository;
-import io.krystof.retro_launcher.controller.jpa.repositories.PlatformBinaryRepository;
-import io.krystof.retro_launcher.controller.jpa.repositories.ProgramDiskImageRepository;
-import io.krystof.retro_launcher.controller.jpa.repositories.ProgramRepository;
+import io.krystof.retro_launcher.controller.jpa.repositories.*;
+import io.krystof.retro_launcher.model.CurationStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -26,6 +26,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -38,13 +39,81 @@ public class ProgramController {
     private final ProgramMapper programMapper;
     private final PlatformBinaryRepository platformBinaryRepository;
     private final AuthorRepository authorRepository;
+    private static final Logger logger = LoggerFactory.getLogger(ProgramController.class);
+    private final PlatformRepository platformRepository;
+    private final DiskImageStorageDAO diskImageStorageDAO;
 
 
-    public ProgramController(ProgramRepository programRepository, ProgramMapper programMapper, PlatformBinaryRepository platformBinaryRepository, AuthorRepository authorRepository) {
+    public ProgramController(ProgramRepository programRepository, ProgramMapper programMapper, PlatformBinaryRepository platformBinaryRepository, AuthorRepository authorRepository, PlatformRepository platformRepository, DiskImageStorageDAO diskImageStorageDAO) {
         this.programRepository = programRepository;
         this.programMapper = programMapper;
         this.platformBinaryRepository = platformBinaryRepository;
         this.authorRepository = authorRepository;
+        this.platformRepository = platformRepository;
+        this.diskImageStorageDAO = diskImageStorageDAO;
+    }
+
+    @PostMapping
+    @Transactional
+    public ResponseEntity<ProgramDTO> createProgram(@RequestBody ProgramDTO programDTO) {
+        logger.info("Creating new program: {}", programDTO);
+
+        // Validate required fields
+        if (programDTO.getTitle() == null || programDTO.getTitle().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Title is required");
+        }
+        if (programDTO.getPlatform() == null || programDTO.getPlatform().getId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Platform is required");
+        }
+        if (programDTO.getPlatformBinary() == null || programDTO.getPlatformBinary().getId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Platform binary is required");
+        }
+
+        try {
+            // Convert DTO to entity
+            Program program = programMapper.toEntity(programDTO);
+
+            // Set default values for new programs
+            program.setCurationStatus(CurationStatus.UNCURATED);
+            program.setRunCount(0);
+
+            // Resolve platform and binary references
+            program.setPlatform(platformRepository.findById(programDTO.getPlatform().getId())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST, "Invalid platform ID")));
+
+            program.setPlatformBinary(platformBinaryRepository.findById(programDTO.getPlatformBinary().getId())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST, "Invalid platform binary ID")));
+
+            // Handle authors
+            if (programDTO.getAuthors() != null) {
+                Set<Author> authors = programDTO.getAuthors().stream()
+                        .map(authorDto -> authorRepository.findById(authorDto.getId())
+                                .orElseThrow(() -> new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST, "Invalid author ID: " + authorDto.getId())))
+                        .collect(Collectors.toSet());
+                program.setAuthors(authors);
+            }
+
+            // Save the program
+            program = programRepository.save(program);
+            logger.info("Created new program with ID: {}", program.getId());
+
+            // Convert back to DTO and return
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(programMapper.toDto(program));
+
+        } catch (Exception e) {
+            logger.error("Error creating program", e);
+            if (e instanceof ResponseStatusException) {
+                throw e;
+            }
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to create program: " + e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
@@ -62,6 +131,9 @@ public class ProgramController {
                     program.setContentRating(updates.getContentRating());
                     program.setCurationStatus(updates.getCurationStatus());
                     program.setCuratorNotes(updates.getCuratorNotes());
+                    program.setSourceUrl(updates.getSourceUrl());
+                    program.setSourceRating(updates.getSourceRating());
+                    program.setSourceId(updates.getSourceId());
 
                     // Update platform binary if changed
                     if (updates.getPlatformBinary() != null) {
@@ -266,6 +338,39 @@ public class ProgramController {
         Program program = programRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Program not found"));
         return programMapper.toDto(program);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProgram(@PathVariable Long id) {
+        try {
+            Optional<Program> programOptional = programRepository.findById(id);
+
+            if (programOptional.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Program program = programOptional.get();
+
+            // Optional: If you want to remove associated disk images from S3
+            if (program.getDiskImages() != null) {
+                program.getDiskImages().forEach(diskImage -> {
+                    try {
+                        // Attempt to delete from S3
+                        diskImageStorageDAO.deleteDiskImage(diskImage.getStoragePath());
+                    } catch (Exception e) {
+                        logger.warn("Could not delete disk image from S3: {}", diskImage.getStoragePath(), e);
+                    }
+                });
+            }
+
+            // Delete the program from the database
+            programRepository.delete(program);
+
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            logger.error("Error deleting program", e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
 }

@@ -19,6 +19,9 @@ public class ProgramDTO {
     private String curatorNotes;
     private OffsetDateTime lastRunAt;
     private Integer runCount;
+    private String sourceUrl;
+    private Double sourceRating;
+    private String sourceId;
     private List<AuthorDTO> authors;
     private PlatformDTO platform;
     private PlatformBinaryDTO platformBinary;
@@ -97,6 +100,9 @@ public class ProgramDTO {
                 ", curatorNotes='" + curatorNotes + '\'' +
                 ", lastRunAt=" + lastRunAt +
                 ", runCount=" + runCount +
+                ", sourceUrl='" + sourceUrl + '\'' +
+                ", sourceRating=" + sourceRating +
+                ", sourceId='" + sourceId + '\'' +
                 ", authors=" + authors +
                 ", platform=" + platform +
                 ", platformBinary=" + platformBinary +
@@ -112,7 +118,7 @@ public class ProgramDTO {
         if (o == null || getClass() != o.getClass()) return false;
 
         ProgramDTO that = (ProgramDTO) o;
-        return Objects.equals(id, that.id) && Objects.equals(title, that.title) && type == that.type && Objects.equals(releaseYear, that.releaseYear) && Objects.equals(description, that.description) && contentRating == that.contentRating && curationStatus == that.curationStatus && Objects.equals(curatorNotes, that.curatorNotes) && Objects.equals(lastRunAt, that.lastRunAt) && Objects.equals(runCount, that.runCount) && Objects.equals(authors, that.authors) && Objects.equals(platform, that.platform) && Objects.equals(platformBinary, that.platformBinary) && Objects.equals(diskImages, that.diskImages) && Objects.equals(launchArguments, that.launchArguments) && Objects.equals(playbackTimelineEvents, that.playbackTimelineEvents);
+        return Objects.equals(id, that.id) && Objects.equals(title, that.title) && type == that.type && Objects.equals(releaseYear, that.releaseYear) && Objects.equals(description, that.description) && contentRating == that.contentRating && curationStatus == that.curationStatus && Objects.equals(curatorNotes, that.curatorNotes) && Objects.equals(lastRunAt, that.lastRunAt) && Objects.equals(runCount, that.runCount) && Objects.equals(sourceUrl, that.sourceUrl) && Objects.equals(sourceRating, that.sourceRating) && Objects.equals(sourceId, that.sourceId) && Objects.equals(authors, that.authors) && Objects.equals(platform, that.platform) && Objects.equals(platformBinary, that.platformBinary) && Objects.equals(diskImages, that.diskImages) && Objects.equals(launchArguments, that.launchArguments) && Objects.equals(playbackTimelineEvents, that.playbackTimelineEvents);
     }
 
     @Override
@@ -127,6 +133,9 @@ public class ProgramDTO {
         result = 31 * result + Objects.hashCode(curatorNotes);
         result = 31 * result + Objects.hashCode(lastRunAt);
         result = 31 * result + Objects.hashCode(runCount);
+        result = 31 * result + Objects.hashCode(sourceUrl);
+        result = 31 * result + Objects.hashCode(sourceRating);
+        result = 31 * result + Objects.hashCode(sourceId);
         result = 31 * result + Objects.hashCode(authors);
         result = 31 * result + Objects.hashCode(platform);
         result = 31 * result + Objects.hashCode(platformBinary);
@@ -134,6 +143,30 @@ public class ProgramDTO {
         result = 31 * result + Objects.hashCode(launchArguments);
         result = 31 * result + Objects.hashCode(playbackTimelineEvents);
         return result;
+    }
+
+    public String getSourceId() {
+        return sourceId;
+    }
+
+    public void setSourceId(String sourceId) {
+        this.sourceId = sourceId;
+    }
+
+    public String getSourceUrl() {
+        return sourceUrl;
+    }
+
+    public void setSourceUrl(String sourceUrl) {
+        this.sourceUrl = sourceUrl;
+    }
+
+    public Double getSourceRating() {
+        return sourceRating;
+    }
+
+    public void setSourceRating(Double sourceRating) {
+        this.sourceRating = sourceRating;
     }
 
 }

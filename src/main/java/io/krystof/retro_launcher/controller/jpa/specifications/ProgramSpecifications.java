@@ -37,6 +37,15 @@ public class ProgramSpecifications {
         };
     }
 
+    public static Specification<Program> withSourceId(String sourceId) {
+        return (root, query, cb) -> {
+            if (sourceId == null || sourceId.trim().isEmpty()) {
+                return null;
+            }
+            return cb.equal(root.get("sourceId"), sourceId.trim());
+        };
+    }
+
     public static Specification<Program> withPlatformBinaryId(Long platformBinaryId) {
         return (root, query, cb) -> {
             if (platformBinaryId == null) {

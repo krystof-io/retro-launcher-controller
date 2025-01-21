@@ -15,7 +15,6 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.ListBucketsResponse;
 
 import javax.sql.DataSource;
 import java.net.URI;
@@ -26,7 +25,7 @@ import java.net.URI;
 @PropertySource("classpath:application-local.properties")
 @ComponentScan(basePackages = "io.krystof.retro_launcher.controller.dataloading")
 @Profile("oneshot")
-public class DataLoaderTestConfig {
+public class ManualDataLoaderTestConfig {
     @Bean
     public DataSource dataSource(@Value("${spring.datasource.url}") String dataSourceUrl,
                                  @Value("${spring.datasource.username}") String dataSourceUsername,

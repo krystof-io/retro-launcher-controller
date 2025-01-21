@@ -1,7 +1,13 @@
 package io.krystof.retro_launcher.controller.dataloading;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.krystof.retro_launcher.controller.dataloading.model.CSDbGroup;
+import io.krystof.retro_launcher.controller.dataloading.model.CSDbReleaseDetail;
+import io.krystof.retro_launcher.controller.dataloading.model.ImageFile;
 import io.krystof.retro_launcher.controller.jpa.entities.*;
 import io.krystof.retro_launcher.controller.jpa.repositories.AuthorRepository;
+import io.krystof.retro_launcher.controller.jpa.repositories.PlatformBinaryRepository;
 import io.krystof.retro_launcher.controller.jpa.repositories.PlatformRepository;
 import io.krystof.retro_launcher.controller.jpa.repositories.ProgramRepository;
 import io.krystof.retro_launcher.model.ContentRating;
@@ -23,17 +29,15 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @Profile("oneshot")
-public class DataLoaderTest {
+public class ManualDataLoaderTest {
 
     @Autowired
     ProgramRepository programRepository;
@@ -43,23 +47,27 @@ public class DataLoaderTest {
     private PlatformRepository platformRepository;
     @Autowired
     private AuthorRepository authorRepository;
+
     MessageDigest sha256Digest = MessageDigest.getInstance("SHA-256");
 
-    private static final Logger log = LoggerFactory.getLogger(DataLoaderTest.class);
+    ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
-    public DataLoaderTest() throws NoSuchAlgorithmException {
-    }
+    private static final Logger log = LoggerFactory.getLogger(ManualDataLoaderTest.class);
+    @Autowired
+    private PlatformBinaryRepository platformBinaryRepository;
+
+    public ManualDataLoaderTest() throws NoSuchAlgorithmException {}
 
 
     public static void main(String[] args) {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
         context.getEnvironment().setActiveProfiles("local", "oneshot");
-        context.register(DataLoaderTestConfig.class);
+        context.register(ManualDataLoaderTestConfig.class);
         context.refresh();
 
         try {
-            DataLoaderTest dataLoaderTestService = context.getBean(DataLoaderTest.class);
-            dataLoaderTestService.doTheThing();
+            ManualDataLoaderTest manualDataLoaderTestService = context.getBean(ManualDataLoaderTest.class);
+            manualDataLoaderTestService.doTheThing();
         } catch (Exception e) {
             log.error("Error doing the thing", e);
         }
@@ -68,14 +76,13 @@ public class DataLoaderTest {
     private void doTheThing() throws NoSuchAlgorithmException, IOException {
         log.info("Doing the thing");
 
-
         String ourBucket = "retro-storage-dev";
+        Path imageRoots = Paths.get("C:\\dev\\git\\krystof.io\\retro-launcher-scraper\\csdb_data\\downloads");
 
-
+        //Delete if we need to, otherwise soft create.
         programRepository.deleteAll();
-        platformRepository.deleteAll();
-        authorRepository.deleteAll();
-
+        //platformRepository.deleteAll();
+        //authorRepository.deleteAll();
         //Clear our bucket!
         Bucket bucket = s3Client.listBuckets().buckets().stream().filter(b -> b.name().equals(ourBucket)).findFirst().orElseThrow();
         //Delete all entries from the bucket?
@@ -84,65 +91,75 @@ public class DataLoaderTest {
             s3Client.deleteObject(DeleteObjectRequest.builder().bucket(ourBucket).key(obj.key()).build());
         });
 
-        Platform c64 = create64Platform();
 
-        Author booze = createAuthor("Booze Design", "Booze Design is a group of people who make demos for the Commodore 64.");
-        for (int x = 0; x < 100; x++ ){
-            createAuthor("Gooze #"+x, "Gooze #"+x+" is a group of people who make demos for the Commodore 64.");
-        }
-        Author performers = createAuthor("Performers", "Performers is a group of people who make demos for the Commodore 64.");
+        File jsonSourceFile = Paths.get("C:\\dev\\git\\krystof.io\\retro-launcher-scraper\\csdb_data\\releases\\csdb_detailed_releases.json").toFile();
 
-        Program edgeOfDisgrace = createProgram("Edge of Disgrace", c64, c64.getBinaries().iterator().next(), ProgramType.DEMO, 2011,
-                "Edge of Disgrace is a demo for the Commodore 64.", ContentRating.SAFE, CurationStatus.UNCURATED,
-                "This is a demo that is very good.", booze);
-        edgeOfDisgrace.setLaunchArguments(new ArrayList<>());
-        edgeOfDisgrace.getLaunchArguments().add(createProgramLauchArgument(edgeOfDisgrace, 1, "-sid 8580", "sound", "SID model 8580"));
-        edgeOfDisgrace.getLaunchArguments().add(createProgramLauchArgument(edgeOfDisgrace, 2, "-drive 8,9", "disk", "Use Disks 8,9"));
-        edgeOfDisgrace = programRepository.save(edgeOfDisgrace);
+        Platform c64 = platformRepository.findByName("Commodore 64").orElseGet(this::create64Platform);
+        PlatformBinary c64Binary = platformBinaryRepository.findByPlatformId(c64.getId()).stream().findFirst().orElseThrow();
 
-        edgeOfDisgrace.setDiskImages(new ArrayList<>());
-        handleDiskImage(ourBucket, edgeOfDisgrace, 1,
-                Paths.get("src/test/resources/edge_of_disgrace/EdgeOfDisgrace_0.d64").toFile());
-        handleDiskImage(ourBucket, edgeOfDisgrace, 2,
-                Paths.get("src/test/resources/edge_of_disgrace/EdgeOfDisgrace_1a.d64").toFile());
-        handleDiskImage(ourBucket, edgeOfDisgrace, 3,
-                Paths.get("src/test/resources/edge_of_disgrace/EdgeOfDisgrace_1b.d64").toFile());
+        List<CSDbReleaseDetail> releases = objectMapper.readValue(jsonSourceFile, objectMapper.getTypeFactory().constructCollectionType(List.class, CSDbReleaseDetail.class));
+        releases.stream().forEach(release -> {
+            log.info("Release: {}:{}", release.getReleaseId(),release.getTitle());
+            log.info("Groups: {}", release.getGroups());
+            log.info("Downloads: {}", release.getDownloads());
+            log.info("Images: {}", release.getImages());
 
-        edgeOfDisgrace = programRepository.save(edgeOfDisgrace);
+            //Find the program if it exists, search by release id (source id)
+            Program program = programRepository.findBySourceId(Integer.toString(release.getReleaseId())).orElseGet(() -> {
+                log.info("Creating program: {}", release.getTitle());
+                return createProgram(c64,c64Binary,release);
+            });
 
-        edgeOfDisgrace.setPlaybackTimelineEvents(new ArrayList<>());
-        PlaybackTimelineEvent myPlaybackTimelineEvent = new PlaybackTimelineEvent();
-        myPlaybackTimelineEvent.setEventType(PlaybackTimelineEventType.MOUNT_NEXT_DISK);
-        myPlaybackTimelineEvent.setTimeOffsetSeconds(45);
-        myPlaybackTimelineEvent.setProgram(edgeOfDisgrace);
-        myPlaybackTimelineEvent.setSequenceNumber(1);
-        edgeOfDisgrace.getPlaybackTimelineEvents().add(myPlaybackTimelineEvent);
+            if (program.getId() != null) {
+                log.info("Program {} already exists, skipping!",program.getTitle());
+                return;
+            }
 
-        myPlaybackTimelineEvent = new PlaybackTimelineEvent();
-        myPlaybackTimelineEvent.setEventType(PlaybackTimelineEventType.MOUNT_NEXT_DISK);
-        myPlaybackTimelineEvent.setTimeOffsetSeconds(567);
-        myPlaybackTimelineEvent.setProgram(edgeOfDisgrace);
-        myPlaybackTimelineEvent.setSequenceNumber(2);
-        edgeOfDisgrace.getPlaybackTimelineEvents().add(myPlaybackTimelineEvent);
+            //Handle the disk images
+            program.setDiskImages(new ArrayList<>());
+            int diskNumber = 1;
+            for (ImageFile imageFile : release.getImages()) {
+                try {
+                    handleDiskImage(ourBucket, program, diskNumber, imageRoots.resolve(imageFile.getPath()).toFile());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                diskNumber++;
+            }
 
-        myPlaybackTimelineEvent = new PlaybackTimelineEvent();
-        myPlaybackTimelineEvent.setEventType(PlaybackTimelineEventType.END_PLAYBACK);
-        myPlaybackTimelineEvent.setTimeOffsetSeconds(323);
-        myPlaybackTimelineEvent.setProgram(edgeOfDisgrace);
-        myPlaybackTimelineEvent.setSequenceNumber(3);
-        edgeOfDisgrace.getPlaybackTimelineEvents().add(myPlaybackTimelineEvent);
+            programRepository.save(program);
 
-        myPlaybackTimelineEvent = new PlaybackTimelineEvent();
-        myPlaybackTimelineEvent.setEventType(PlaybackTimelineEventType.PRESS_KEYS);
-        myPlaybackTimelineEvent.setTimeOffsetSeconds(323);
-        myPlaybackTimelineEvent.setProgram(edgeOfDisgrace);
-        myPlaybackTimelineEvent.setEventData(new HashMap<>());
-        myPlaybackTimelineEvent.getEventData().put("keys", "<F1>");
-        myPlaybackTimelineEvent.setSequenceNumber(4);
-        edgeOfDisgrace.getPlaybackTimelineEvents().add(myPlaybackTimelineEvent);
+        });
 
 
-        edgeOfDisgrace = programRepository.save(edgeOfDisgrace);
+    }
+
+    private Program createProgram(Platform platform, PlatformBinary platformBinary ,CSDbReleaseDetail release) {
+        Program myProgram  = new Program();
+        myProgram.setTitle(release.getTitle());
+        myProgram.setSourceId(Integer.toString(release.getReleaseId()));
+        myProgram.setSourceUrl(release.getUrl());
+        myProgram.setSourceRating(release.getRating());
+        myProgram.setType(ProgramType.DEMO);
+        myProgram.setAuthors(new HashSet<>(findOrCreateAuthors(release.getGroups())));
+        myProgram.setPlatform(platform);
+        myProgram.setPlatformBinary(platformBinary);
+        myProgram.setCurationStatus(CurationStatus.UNCURATED);
+        myProgram.setContentRating(ContentRating.UNRATED);
+        myProgram.setReleaseYear(release.getReleaseDate().getYear());
+
+
+        return myProgram;
+
+    }
+
+    private List<Author> findOrCreateAuthors(List<CSDbGroup> groups) {
+        List<Author> authors = new ArrayList<>();
+        groups.forEach(group -> {
+            Author author = authorRepository.findByName(group.getName()).orElseGet(() -> createAuthor(group.getName(), group.getWebsiteUrl()));
+            authors.add(author);
+        });
+        return authors;
     }
 
     private void handleDiskImage(String ourBucket, Program program, int diskNumber, File imageFile) throws IOException {
@@ -192,27 +209,31 @@ public class DataLoaderTest {
         program.setAuthors(new HashSet<>());
         program.getAuthors().add(author);
         program.setCuratorNotes(curationNotes);
+        program.setSourceRating(6.1);
+        program.setSourceUrl("https://someplaceouthere.com/release/1234324");
+        program.setSourceId("1234324");
         return programRepository.save(program);
     }
 
-    private Author createAuthor(String performers, String s) {
+    private Author createAuthor(String authorName, String desc) {
+        log.info("Creating author: {}", authorName);
         Author author = new Author();
-        author.setName(performers);
-        author.setDescription(s);
+        author.setName(authorName);
+        author.setDescription(desc);
         return authorRepository.save(author);
     }
 
     private Platform create64Platform() {
         Platform c64 = new Platform();
         c64.setName("Commodore 64");
-        c64.setDescription("The Commodore 64 is an 8-bit home computer introduced in January 1982 by Commodore International.");
+        c64.setDescription("The classic demoscene machine!");
         Set<PlatformBinary> platformBinaries = new HashSet<>();
         c64.setBinaries(platformBinaries);
         PlatformBinary c64Binary = new PlatformBinary();
         c64Binary.setPlatform(c64);
         c64Binary.setName("x64");
         c64Binary.setVariant("Default");
-        c64Binary.setDescription("Vice-X64SC is a Commodore 64 emulator.");
+        c64Binary.setDescription("Default X64 binary (non-SC) for hot PAL Demo action.");
         Set<PlatformBinaryLaunchArgument> c64BinaryLaunchArguments = new HashSet<>();
         c64Binary.setLaunchArguments(c64BinaryLaunchArguments);
         PlatformBinaryLaunchArgument c64BinaryLaunchArgument = new PlatformBinaryLaunchArgument();
@@ -240,32 +261,32 @@ public class DataLoaderTest {
         c64BinaryLaunchArgument.setRequired(true);
         c64BinaryLaunchArguments.add(c64BinaryLaunchArgument);
         platformBinaries.add(c64Binary);
-        PlatformBinary binaryWithOtherOptions = new PlatformBinary();
-        binaryWithOtherOptions.setPlatform(c64);
-        binaryWithOtherOptions.setName("x64");
-        binaryWithOtherOptions.setVariant("VIC Dual SID");
-        binaryWithOtherOptions.setDescription("Vice-X64SC is a Commodore 64 emulator. This one is for special VIC Dual-SID mode.");
-        Set<PlatformBinaryLaunchArgument> dualSidLaunchArgs = new HashSet<>();
-        binaryWithOtherOptions.setLaunchArguments(dualSidLaunchArgs);
-        PlatformBinaryLaunchArgument dualSidLaunchArg = new PlatformBinaryLaunchArgument();
-        dualSidLaunchArg.setPlatformBinary(binaryWithOtherOptions);
-        dualSidLaunchArg.setDescription("Arg XDXDAS");
-        dualSidLaunchArg.setArgumentTemplate("arg1DUALSID");
-        dualSidLaunchArg.setArgumentOrder(1);
-        dualSidLaunchArg.setFileArgument(false);
-        dualSidLaunchArg.setRequired(false);
-        dualSidLaunchArgs.add(dualSidLaunchArg);
-
-        dualSidLaunchArg = new PlatformBinaryLaunchArgument();
-        dualSidLaunchArg.setPlatformBinary(binaryWithOtherOptions);
-        dualSidLaunchArg.setDescription("auto");
-        dualSidLaunchArg.setArgumentTemplate("assssss");
-        dualSidLaunchArg.setArgumentOrder(999);
-        dualSidLaunchArg.setFileArgument(true);
-        dualSidLaunchArg.setRequired(true);
-        dualSidLaunchArgs.add(dualSidLaunchArg);
-
-        platformBinaries.add(binaryWithOtherOptions);
+//        PlatformBinary binaryWithOtherOptions = new PlatformBinary();
+//        binaryWithOtherOptions.setPlatform(c64);
+//        binaryWithOtherOptions.setName("x64");
+//        binaryWithOtherOptions.setVariant("VIC Dual SID");
+//        binaryWithOtherOptions.setDescription("Vice-X64SC is a Commodore 64 emulator. This one is for special VIC Dual-SID mode.");
+//        Set<PlatformBinaryLaunchArgument> dualSidLaunchArgs = new HashSet<>();
+//        binaryWithOtherOptions.setLaunchArguments(dualSidLaunchArgs);
+//        PlatformBinaryLaunchArgument dualSidLaunchArg = new PlatformBinaryLaunchArgument();
+//        dualSidLaunchArg.setPlatformBinary(binaryWithOtherOptions);
+//        dualSidLaunchArg.setDescription("Arg XDXDAS");
+//        dualSidLaunchArg.setArgumentTemplate("arg1DUALSID");
+//        dualSidLaunchArg.setArgumentOrder(1);
+//        dualSidLaunchArg.setFileArgument(false);
+//        dualSidLaunchArg.setRequired(false);
+//        dualSidLaunchArgs.add(dualSidLaunchArg);
+//
+//        dualSidLaunchArg = new PlatformBinaryLaunchArgument();
+//        dualSidLaunchArg.setPlatformBinary(binaryWithOtherOptions);
+//        dualSidLaunchArg.setDescription("auto");
+//        dualSidLaunchArg.setArgumentTemplate("assssss");
+//        dualSidLaunchArg.setArgumentOrder(999);
+//        dualSidLaunchArg.setFileArgument(true);
+//        dualSidLaunchArg.setRequired(true);
+//        dualSidLaunchArgs.add(dualSidLaunchArg);
+//
+//        platformBinaries.add(binaryWithOtherOptions);
         return platformRepository.save(c64);
     }
 

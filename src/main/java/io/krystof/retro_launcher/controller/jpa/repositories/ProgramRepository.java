@@ -26,4 +26,6 @@ public interface ProgramRepository extends JpaRepository<Program, Long> , JpaSpe
             "WHERE p.curationStatus = :status " +
             "ORDER BY p.createdAt DESC")
     List<Program> findByCurationStatusWithBasicDetails(String status);
+
+    Optional<Program> findBySourceId(String sourceId);
 }
