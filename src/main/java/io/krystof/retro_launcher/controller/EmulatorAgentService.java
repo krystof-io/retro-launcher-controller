@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.krystof.retro_launcher.model.*;
 import jakarta.annotation.PostConstruct;
-import jakarta.websocket.Session;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,7 +18,6 @@ import org.springframework.web.socket.*;
 import org.springframework.web.socket.client.WebSocketClient;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,6 +25,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Service
 public class EmulatorAgentService implements WebSocketHandler {
     private static final Logger logger = LoggerFactory.getLogger(EmulatorAgentService.class);
+
+    // WebSocket configuration
+    private static final long HEARTBEAT_INTERVAL = 30000; // 30 seconds
+    private static final long HEARTBEAT_TIMEOUT = 90000;  // 90 seconds
+    private static final long BASE_DELAY = 250;          // 250ms initial delay
+    private static final long MAX_RECONNECT_DELAY = 30000; // 30 seconds max delay
 
     private final WebSocketClient wsClient;
     private final String agentWsUrl;
@@ -35,13 +40,11 @@ public class EmulatorAgentService implements WebSocketHandler {
     private final RestTemplate restTemplate;
 
     private WebSocketSession session;
-    private final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+    private ScheduledFuture<?> heartbeatFuture;
+    private volatile long lastHeartbeatResponse;
+    private final AtomicInteger reconnectAttempts = new AtomicInteger(0);
     private volatile boolean reconnecting = false;
-
-    private AtomicInteger reconnectAttempts = new AtomicInteger(0);
-    private static final long baseDelay = 250;
-    private static final long maxReconnectDelay = 30000;
-
 
     public EmulatorAgentService(
             WebSocketClient wsClient,
@@ -55,23 +58,51 @@ public class EmulatorAgentService implements WebSocketHandler {
         this.agentWsUrl = agentBaseUrl.replace("http", "ws") + "/ws";
         this.agentRestUrl = agentBaseUrl;
         this.restTemplate = restTemplate;
+        this.lastHeartbeatResponse = System.currentTimeMillis();
     }
 
     @PostConstruct
-    public void initialConstruction() {
-        logger.info("Bootstrapping websocket connection.");
-        scheduleReconnect();
+    public void initialize() {
+        logger.info("Initializing EmulatorAgentService");
+        connect();
+        startHeartbeatMonitor();
+    }
+
+    private void startHeartbeatMonitor() {
+        // Schedule heartbeat sender
+        heartbeatFuture = scheduler.scheduleAtFixedRate(() -> {
+            try {
+                if (session != null && session.isOpen()) {
+                    // Send heartbeat message
+                    AgentMessage<Void> heartbeat = new AgentMessage<>(AgentMessageType.HEARTBEAT, null);
+                    String heartbeatMsg = objectMapper.writeValueAsString(heartbeat);
+                    logger.info("Sending heartbeat message to agent: {}", heartbeatMsg);
+                    session.sendMessage(new TextMessage(heartbeatMsg));
+
+                    // Check for heartbeat timeout
+                    if (System.currentTimeMillis() - lastHeartbeatResponse > HEARTBEAT_TIMEOUT) {
+                        logger.warn("Heartbeat timeout detected, reconnecting...");
+                        closeSession();
+                        scheduleReconnect();
+                    }
+                }
+            } catch (Exception e) {
+                logger.error("Error sending heartbeat", e);
+                scheduleReconnect();
+            }
+        }, 0, HEARTBEAT_INTERVAL, TimeUnit.MILLISECONDS);
     }
 
     public void connect() {
         try {
             logger.info("Attempting to connect to WebSocket at {}", agentWsUrl);
-            logger.info("Current session object: {}",session);
+            logger.debug("Current session object: {}", session);
             if (session != null) {
-                logger.info("session stats: {}", session.getAttributes());
-                logger.info("session open: {}", session.isOpen());
-                logger.info("session id: {}", session.getId());
+                logger.debug("Session stats: {}", session.getAttributes());
+                logger.debug("Session open: {}", session.isOpen());
+                logger.debug("Session id: {}", session.getId());
             }
+
             CompletableFuture<WebSocketSession> sessionCompletable = wsClient.execute(this, this.agentWsUrl);
             try {
                 sessionCompletable.get(5, TimeUnit.SECONDS);
@@ -79,18 +110,43 @@ public class EmulatorAgentService implements WebSocketHandler {
                 logger.error("Timeout connecting to WebSocket, scheduling reconnect", e);
                 scheduleReconnect();
             }
-
         } catch (Exception e) {
             logger.error("Error connecting to WebSocket", e);
             scheduleReconnect();
         }
     }
 
+    private void scheduleReconnect() {
+        logger.info("Reconnecting flag currently: {}", reconnecting);
+        if (!reconnecting || (session == null || !session.isOpen())) {
+            logger.info("Going into reconnect mode.");
+            reconnecting = true;
+            long delay = Math.min(
+                    BASE_DELAY * (long)Math.pow(2, reconnectAttempts.getAndIncrement()),
+                    MAX_RECONNECT_DELAY
+            );
+            scheduler.schedule(this::connect, delay, TimeUnit.MILLISECONDS);
+            logger.info("Scheduled WebSocket reconnection in {} ms", delay);
+        }
+    }
+
+    private void closeSession() {
+        if (session != null && session.isOpen()) {
+            try {
+                session.close();
+            } catch (IOException e) {
+                logger.error("Error closing WebSocket session", e);
+            }
+        }
+        session = null;
+    }
+
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         this.session = session;
-        reconnecting = false; // Connection is successful
+        reconnecting = false;
         reconnectAttempts.set(0);
+        lastHeartbeatResponse = System.currentTimeMillis();
         logger.info("Connected to agent WebSocket at {}", agentWsUrl);
     }
 
@@ -110,13 +166,21 @@ public class EmulatorAgentService implements WebSocketHandler {
 
     @Override
     public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) throws IOException {
-        logger.info("Inbound message from agent. Payload: {}", message.getPayload());
+        logger.debug("Inbound message from agent. Payload: {}", message.getPayload());
         if (message instanceof TextMessage textMessage) {
             try {
                 JsonNode messageNode = objectMapper.readTree(textMessage.getPayload());
                 AgentMessageType messageType = AgentMessageType.valueOf(messageNode.get("type").asText());
 
+                // Update heartbeat timestamp for any received message
+                lastHeartbeatResponse = System.currentTimeMillis();
+                reconnectAttempts.set(0); // Reset reconnect attempts on successful message
+
                 switch (messageType) {
+                    case HEARTBEAT:
+                        // Heartbeat response received, timestamp already updated
+                        logger.info("Received heartbeat message from agent: {}", messageNode);
+                        break;
                     case STATUS_UPDATE:
                         EmulatorStatus status = objectMapper.treeToValue(
                                 messageNode.get("payload"),
@@ -124,7 +188,6 @@ public class EmulatorAgentService implements WebSocketHandler {
                         );
                         mediator.updateStatus(status);
                         break;
-
                     case ERROR:
                         JsonNode payload = messageNode.get("payload");
                         EmulatorError error = new EmulatorError(
@@ -134,8 +197,6 @@ public class EmulatorAgentService implements WebSocketHandler {
                         );
                         handleError(error);
                         break;
-
-
                     default:
                         logger.warn("Unknown message type: {}", messageType);
                 }
@@ -152,24 +213,12 @@ public class EmulatorAgentService implements WebSocketHandler {
 
     private void handleError(EmulatorError error) {
         logger.error("Emulator error: {} - {}", error.getCode(), error.getMessage());
-        // Notify the mediator about the error
         mediator.notifyError(error);
     }
 
     @Override
     public boolean supportsPartialMessages() {
         return false;
-    }
-
-    private void closeSession() {
-        if (session != null && session.isOpen()) {
-            try {
-                session.close();
-            } catch (IOException e) {
-                logger.error("Error closing WebSocket session", e);
-            }
-        }
-        session = null;
     }
 
     public EmulatorStatus getCurrentStatus() {
@@ -196,21 +245,6 @@ public class EmulatorAgentService implements WebSocketHandler {
         }
     }
 
-    private void scheduleReconnect() {
-        logger.info("Reconnecting flag currently: {}", reconnecting);
-        if (!reconnecting || (session == null || !session.isOpen())) {
-            logger.info("Going into reconnect mode.");
-            reconnecting = true;
-            long delay = Math.min(
-                    baseDelay * (long)Math.pow(2, reconnectAttempts.getAndIncrement()),
-                    maxReconnectDelay
-            );
-            reconnectExecutor.schedule(this::connect, delay, TimeUnit.MILLISECONDS);
-            logger.info("Scheduled WebSocket reconnection in {} ms", delay);
-        }
-    }
-
-
     public ResponseEntity<Map<String, Object>> postToAgent(String path, Object body) {
         String url = agentRestUrl + path;
         logger.info("Making POST request to agent: {} with body: {}", url, body);
@@ -235,5 +269,21 @@ public class EmulatorAgentService implements WebSocketHandler {
         }
     }
 
-
+    @PreDestroy
+    public void cleanup() {
+        logger.info("Cleaning up EmulatorAgentService");
+        if (heartbeatFuture != null) {
+            heartbeatFuture.cancel(true);
+        }
+        scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        closeSession();
+    }
 }

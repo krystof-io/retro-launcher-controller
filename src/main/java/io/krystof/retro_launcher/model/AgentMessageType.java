@@ -8,5 +8,6 @@ import java.util.Map;
 public enum AgentMessageType {
     STATUS_UPDATE,
     ERROR,
+    HEARTBEAT,
     // future message types...
 }
