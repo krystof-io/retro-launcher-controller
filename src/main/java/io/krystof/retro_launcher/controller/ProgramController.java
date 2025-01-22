@@ -156,25 +156,26 @@ public class ProgramController {
                         program.setAuthors(authors);
                     }
 
+
                     //handle disk images - pain in the ass with unique constraints, having to set -diskNumbers
                     //first since we have a constraint on disk number.  Probably could use some love down the
                     //road but it works for now, and we don't typically edit all of a program that often.
                     if (updates.getDiskImages() != null) {
                         // Get map of existing images by file hash for lookup
-                        Map<String, ProgramDiskImage> existingImagesByHash = program.getDiskImages().stream()
-                                .collect(Collectors.toMap(ProgramDiskImage::getFileHash, img -> img));
+                        Map<Integer, ProgramDiskImage> existingImagesByDiskNumber = program.getDiskImages().stream()
+                                .collect(Collectors.toMap(ProgramDiskImage::getDiskNumber, img -> img));
 
                         // Remove images that are not in the update
-                        Set<String> updateHashes = updates.getDiskImages().stream()
-                                .map(ProgramDiskImageDTO::getFileHash)
+                        Set<Integer> updateDiskNumbers = updates.getDiskImages().stream()
+                                .map(ProgramDiskImageDTO::getDiskNumber)
                                 .collect(Collectors.toSet());
 
                         program.getDiskImages().forEach(img -> {
-                            if (!updateHashes.contains(img.getFileHash())) {
+                            if (!updateDiskNumbers.contains(img.getDiskNumber())) {
                                 img.setProgram(null);
                             }
                         });
-                        program.getDiskImages().removeIf(img -> !updateHashes.contains(img.getFileHash()));
+                        program.getDiskImages().removeIf(img -> !updateDiskNumbers.contains(img.getDiskNumber()));
 
                         program = programRepository.save(program);
 
@@ -182,7 +183,7 @@ public class ProgramController {
                         List<ProgramDiskImage> diskImages = updates.getDiskImages().stream()
                                 .map(diskImageDto -> {
                                     // Try to find existing image with this hash
-                                    ProgramDiskImage diskImage = existingImagesByHash.get(diskImageDto.getFileHash());
+                                    ProgramDiskImage diskImage = existingImagesByDiskNumber.get(diskImageDto.getDiskNumber());
                                     if (diskImage != null) {
                                         // Use a temporary negative disk number to avoid unique constraints
                                         diskImage.setDiskNumber(-Math.abs(diskImageDto.getDiskNumber()));
@@ -216,7 +217,6 @@ public class ProgramController {
                     //first since we have a constraint on disk number.  Probably could use some love down the
                     //road but it works for now, and we don't typically edit all of a program that often.
                     if (updates.getLaunchArguments() != null) {
-
 
                         // Get map of existing images by file hash for lookup
                         Map<String, ProgramLaunchArgument> existingArgumentsByToString = program.getLaunchArguments().stream()

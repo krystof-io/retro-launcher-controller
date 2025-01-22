@@ -5,6 +5,7 @@ import io.krystof.retro_launcher.controller.jpa.entities.Author;
 import io.krystof.retro_launcher.controller.jpa.entities.Program;
 import io.krystof.retro_launcher.controller.jpa.repositories.ProgramRepository;
 import io.krystof.retro_launcher.controller.resolvers.CommandLineArgumentResolver;
+import io.krystof.retro_launcher.controller.util.PlaybackTimelineConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -78,20 +79,12 @@ public class LaunchController {
         }
         config.put("images", images);
 
-        List<Map<String, Object>> playbackTimelineEventList = new ArrayList<>();
-        if (program.getPlaybackTimelineEvents() != null) {
-            program.getPlaybackTimelineEvents().stream()
-                    .sorted((d1, d2) -> d1.getSequenceNumber().compareTo(d2.getSequenceNumber()))
-                    .forEach(event -> {
-                        Map<String, Object> programCommand = new HashMap<>();
-                        programCommand.put("event_type", event.getEventType().toString());
-                        programCommand.put("sequence_number", event.getSequenceNumber());
-                        programCommand.put("time_offset_seconds", event.getTimeOffsetSeconds());
-                        programCommand.put("event_data", event.getEventData());
-                        playbackTimelineEventList.add(programCommand);
-                    });
+        if (program.getPlaybackTimelineEvents() != null && !program.getPlaybackTimelineEvents().isEmpty()) {
+            List<Map<String, Object>> agentEvents = PlaybackTimelineConverter.convertToRelativeDelays(
+                    program.getPlaybackTimelineEvents()
+            );
+            config.put("playback_timeline_events", agentEvents);
         }
-        config.put("playback_timeline_events", playbackTimelineEventList);
 
         config.put("platform_name", program.getPlatform().getName());
         config.put("program_title", program.getTitle());

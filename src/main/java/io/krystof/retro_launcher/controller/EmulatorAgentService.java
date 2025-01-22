@@ -34,15 +34,13 @@ public class EmulatorAgentService implements WebSocketHandler {
     private final EmulatorAgentWebSocketMediator mediator;
     private final RestTemplate restTemplate;
 
-    EmulatorStatus currentStatus;
-
     private WebSocketSession session;
     private final ScheduledExecutorService reconnectExecutor = Executors.newSingleThreadScheduledExecutor();
     private volatile boolean reconnecting = false;
 
     private AtomicInteger reconnectAttempts = new AtomicInteger(0);
     private static final long baseDelay = 250;
-    private static final long maxReconnectDelay = 5000;
+    private static final long maxReconnectDelay = 30000;
 
 
     public EmulatorAgentService(
@@ -124,7 +122,6 @@ public class EmulatorAgentService implements WebSocketHandler {
                                 messageNode.get("payload"),
                                 EmulatorStatus.class
                         );
-                        currentStatus = status;
                         mediator.updateStatus(status);
                         break;
 
@@ -175,6 +172,30 @@ public class EmulatorAgentService implements WebSocketHandler {
         session = null;
     }
 
+    public EmulatorStatus getCurrentStatus() {
+        String url = agentRestUrl + "/status";
+        logger.info("Making GET request to agent: {}", url);
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<?> requestEntity = new HttpEntity<>(headers);
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    requestEntity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+            EmulatorStatus status = objectMapper.convertValue(response.getBody(), EmulatorStatus.class);
+            logger.info("Received direct response from agent: {}", response.getBody());
+            return status;
+        } catch (RestClientException e) {
+            logger.error("Error making request to agent: ", e);
+            throw new RuntimeException("Failed to communicate with agent service", e);
+        }
+    }
+
     private void scheduleReconnect() {
         logger.info("Reconnecting flag currently: {}", reconnecting);
         if (!reconnecting || (session == null || !session.isOpen())) {
@@ -189,9 +210,6 @@ public class EmulatorAgentService implements WebSocketHandler {
         }
     }
 
-    public EmulatorStatus getCurrentStatus() {
-        return currentStatus;
-    }
 
     public ResponseEntity<Map<String, Object>> postToAgent(String path, Object body) {
         String url = agentRestUrl + path;
@@ -216,4 +234,6 @@ public class EmulatorAgentService implements WebSocketHandler {
             throw new RuntimeException("Failed to communicate with agent service", e);
         }
     }
+
+
 }

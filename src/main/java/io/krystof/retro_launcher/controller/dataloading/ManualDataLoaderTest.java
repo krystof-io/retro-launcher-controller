@@ -18,6 +18,7 @@ import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
@@ -53,11 +54,15 @@ public class ManualDataLoaderTest {
     ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private static final Logger log = LoggerFactory.getLogger(ManualDataLoaderTest.class);
+
     @Autowired
     private PlatformBinaryRepository platformBinaryRepository;
 
-    public ManualDataLoaderTest() throws NoSuchAlgorithmException {}
 
+    @Value("${retro.storage.bucket}")
+    private String bucketNameToUse;
+
+    public ManualDataLoaderTest() throws NoSuchAlgorithmException {}
 
     public static void main(String[] args) {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
@@ -74,22 +79,22 @@ public class ManualDataLoaderTest {
     }
 
     private void doTheThing() throws NoSuchAlgorithmException, IOException {
-        log.info("Doing the thing");
+        log.info("Doing the thing, and our AWS bucket name is: {}", bucketNameToUse);
 
-        String ourBucket = "retro-storage-dev";
+
         Path imageRoots = Paths.get("C:\\dev\\git\\krystof.io\\retro-launcher-scraper\\csdb_data\\downloads");
 
         //Delete if we need to, otherwise soft create.
-        programRepository.deleteAll();
+        //programRepository.deleteAll();
         //platformRepository.deleteAll();
         //authorRepository.deleteAll();
         //Clear our bucket!
-        Bucket bucket = s3Client.listBuckets().buckets().stream().filter(b -> b.name().equals(ourBucket)).findFirst().orElseThrow();
+        Bucket bucket = s3Client.listBuckets().buckets().stream().filter(b -> b.name().equals(bucketNameToUse)).findFirst().orElseThrow();
         //Delete all entries from the bucket?
-        s3Client.listObjectsV2(ListObjectsV2Request.builder().bucket(ourBucket).build()).contents().forEach(obj -> {
-            log.info("Deleting object: {}", obj.key());
-            s3Client.deleteObject(DeleteObjectRequest.builder().bucket(ourBucket).key(obj.key()).build());
-        });
+//        s3Client.listObjectsV2(ListObjectsV2Request.builder().bucket(bucketNameToUse).build()).contents().forEach(obj -> {
+//            log.info("Deleting object: {}", obj.key());
+//            s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucketNameToUse).key(obj.key()).build());
+//        });
 
 
         File jsonSourceFile = Paths.get("C:\\dev\\git\\krystof.io\\retro-launcher-scraper\\csdb_data\\releases\\csdb_detailed_releases.json").toFile();
@@ -120,7 +125,7 @@ public class ManualDataLoaderTest {
             int diskNumber = 1;
             for (ImageFile imageFile : release.getImages()) {
                 try {
-                    handleDiskImage(ourBucket, program, diskNumber, imageRoots.resolve(imageFile.getPath()).toFile());
+                    handleDiskImage(bucketNameToUse, program, diskNumber, imageRoots.resolve(imageFile.getPath()).toFile());
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }

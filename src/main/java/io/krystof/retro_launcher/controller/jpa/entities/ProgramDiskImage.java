@@ -22,7 +22,7 @@ public class ProgramDiskImage {
     @Column(name = "image_name", nullable = false)
     private String imageName;
 
-    @Column(name = "file_hash", nullable = false, unique = true)
+    @Column(name = "file_hash", nullable = false)
     private String fileHash;
 
     @Column(name = "file_size", nullable = false)
