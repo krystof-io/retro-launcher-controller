@@ -10,6 +10,15 @@ public class EmulatorStatus {
     private String state;
     private SystemStats systemStats;
     private ProcessStats process;
+    private String version;
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
 
     // Nested class for system statistics
     public static class SystemStats {
