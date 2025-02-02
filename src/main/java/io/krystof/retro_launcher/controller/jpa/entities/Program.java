@@ -5,7 +5,9 @@ import io.krystof.retro_launcher.model.CurationStatus;
 import io.krystof.retro_launcher.model.ProgramType;
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -67,6 +69,28 @@ public class Program {
     @Column(name = "source_id")
     private String sourceId;
 
+    @Column(name = "avg_music_score", precision = 3, scale = 2)
+    private BigDecimal avgMusicScore;
+
+    @Column(name = "avg_graphics_score", precision = 3, scale = 2)
+    private BigDecimal avgGraphicsScore;
+
+    @Column(name = "avg_vibes_score", precision = 3, scale = 2)
+    private BigDecimal avgVibesScore;
+
+    @Column(name = "total_votes")
+    private Integer totalVotes;
+
+    @Column(name = "mgv_index", precision = 5, scale = 2)
+    private BigDecimal mgvIndex;
+
+    @Column(name = "tier", length = 1)
+    private String tier;
+
+    @OneToMany(mappedBy = "programId", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt DESC")
+    private List<ProgramVote> votes = new ArrayList<>();
+
     @ManyToOne
     @JoinColumn(name = "platform_binary_id")
     private PlatformBinary platformBinary;
@@ -93,11 +117,29 @@ public class Program {
     protected void onCreate() {
         createdAt = OffsetDateTime.now();
         updatedAt = createdAt;
+        calculateTier();
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = OffsetDateTime.now();
+        calculateTier();
+    }
+
+    protected void calculateTier() {
+        if (mgvIndex == null) {
+            tier = null;
+            return;
+        }
+
+        tier = switch ((int) (mgvIndex.doubleValue() / 10)) {
+            case 9, 10 -> "S";
+            case 8 -> "A";
+            case 7 -> "B";
+            case 6 -> "C";
+            case 5 -> "D";
+            default -> "E";
+        };
     }
 
     public Long getId() {
@@ -265,5 +307,61 @@ public class Program {
 
     public void setDiskImages(List<ProgramDiskImage> diskImages) {
         this.diskImages = diskImages;
+    }
+
+    public BigDecimal getAvgMusicScore() {
+        return avgMusicScore;
+    }
+
+    public void setAvgMusicScore(BigDecimal avgMusicScore) {
+        this.avgMusicScore = avgMusicScore;
+    }
+
+    public BigDecimal getAvgGraphicsScore() {
+        return avgGraphicsScore;
+    }
+
+    public void setAvgGraphicsScore(BigDecimal avgGraphicsScore) {
+        this.avgGraphicsScore = avgGraphicsScore;
+    }
+
+    public BigDecimal getAvgVibesScore() {
+        return avgVibesScore;
+    }
+
+    public void setAvgVibesScore(BigDecimal avgVibesScore) {
+        this.avgVibesScore = avgVibesScore;
+    }
+
+    public Integer getTotalVotes() {
+        return totalVotes;
+    }
+
+    public void setTotalVotes(Integer totalVotes) {
+        this.totalVotes = totalVotes;
+    }
+
+    public BigDecimal getMgvIndex() {
+        return mgvIndex;
+    }
+
+    public void setMgvIndex(BigDecimal mgvIndex) {
+        this.mgvIndex = mgvIndex;
+    }
+
+    public String getTier() {
+        return tier;
+    }
+
+    public void setTier(String tier) {
+        this.tier = tier;
+    }
+
+    public List<ProgramVote> getVotes() {
+        return votes;
+    }
+
+    public void setVotes(List<ProgramVote> votes) {
+        this.votes = votes;
     }
 }
