@@ -61,4 +61,8 @@ public class ProgramDiskImageDTO {
         result = 31 * result + Objects.hashCode(storagePath);
         return result;
     }
+
+    public String toStringForRoughCompare() {
+        return getDiskNumber()+":"+getFileHash()+":"+getImageName();
+    }
 }

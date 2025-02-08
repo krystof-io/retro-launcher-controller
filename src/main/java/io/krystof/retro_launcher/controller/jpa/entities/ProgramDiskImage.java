@@ -114,4 +114,8 @@ public class ProgramDiskImage {
     public void setUpdatedAt(OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
+
+    public String toStringForRoughCompare() {
+        return getDiskNumber()+":"+getFileHash()+":"+getImageName();
+    }
 }

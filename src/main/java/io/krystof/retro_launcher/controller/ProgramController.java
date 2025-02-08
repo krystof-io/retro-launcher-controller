@@ -162,28 +162,29 @@ public class ProgramController {
                     //road but it works for now, and we don't typically edit all of a program that often.
                     if (updates.getDiskImages() != null) {
                         // Get map of existing images by file hash for lookup
-                        Map<Integer, ProgramDiskImage> existingImagesByDiskNumber = program.getDiskImages().stream()
-                                .collect(Collectors.toMap(ProgramDiskImage::getDiskNumber, img -> img));
+                        Map<String, ProgramDiskImage> existingImagesByCompare = program.getDiskImages().stream()
+                                .collect(Collectors.toMap(ProgramDiskImage::toStringForRoughCompare, img -> img));
 
                         // Remove images that are not in the update
-                        Set<Integer> updateDiskNumbers = updates.getDiskImages().stream()
-                                .map(ProgramDiskImageDTO::getDiskNumber)
+                        Set<String> updateToStrings = updates.getDiskImages().stream()
+                                .map(ProgramDiskImageDTO::toStringForRoughCompare)
                                 .collect(Collectors.toSet());
 
                         program.getDiskImages().forEach(img -> {
-                            if (!updateDiskNumbers.contains(img.getDiskNumber())) {
+                            if (!updateToStrings.contains(img.toStringForRoughCompare())) {
                                 img.setProgram(null);
                             }
                         });
-                        program.getDiskImages().removeIf(img -> !updateDiskNumbers.contains(img.getDiskNumber()));
 
-                        program = programRepository.save(program);
+                        program.getDiskImages().removeIf(img -> !updateToStrings.contains(img.toStringForRoughCompare()));
+
+                        program = programRepository.saveAndFlush(program);
 
                         // First pass: set to temporary negative disk numbers
                         List<ProgramDiskImage> diskImages = updates.getDiskImages().stream()
                                 .map(diskImageDto -> {
                                     // Try to find existing image with this hash
-                                    ProgramDiskImage diskImage = existingImagesByDiskNumber.get(diskImageDto.getDiskNumber());
+                                    ProgramDiskImage diskImage = existingImagesByCompare.get(diskImageDto.toStringForRoughCompare());
                                     if (diskImage != null) {
                                         // Use a temporary negative disk number to avoid unique constraints
                                         diskImage.setDiskNumber(-Math.abs(diskImageDto.getDiskNumber()));
